@@ -289,8 +289,9 @@ taskController.updateTask = async (req, res, next) => {
     //if there is a new assignee, validate assignee id
     if (taskUpdateInput.assignee) {
       const targetAssignee = await User.findById(taskUpdateInput.assignee);
-      if (!targetAssignee)
+      if (!targetAssignee) {
         throw new AppError(404, "Assignee Not Found", "Update Task Error");
+      }
     }
 
     //update status rule - previous status = 'done' => only available option is 'archive'
@@ -320,30 +321,39 @@ taskController.updateTask = async (req, res, next) => {
           };
 
     //mongoose query
-    const updated = await Task.findByIdAndUpdate(taskId, updatedTask, {
-      new: true,
-    });
+    // const updated = await Task.findByIdAndUpdate(taskId, updatedTask, {
+    //   new: true,
+    // });
 
+    let updated;
     //update task status in User collection
-    if (updated.assignee) {
-      //check if user already has tasks in User document
-      const targetAssignee = await User.findById(updated.assignee);
-      //if yes, check no duplicate => add
-      if (targetAssignee.tasks) {
-        if (!targetAssignee.tasks.includes(updated._id)) {
-          targetAssignee.tasks.push(updated._id);
+    if (updatedTask.assignee) {
+      //check targetAsignee available
+      const targetAssignee = await User.findById(updatedTask.assignee);
+      if (targetAssignee) {
+        //check if user already has tasks in User document
+        //if yes, check no duplicate => add
+        if (targetAssignee.tasks) {
+          if (!targetAssignee.tasks.includes(updated._id)) {
+            targetAssignee.tasks.push(updated._id);
+          }
+        } else {
+          //if not, create
+          targetAssignee.tasks = [updated._id];
         }
-      } else {
-        //if not, create
-        targetAssignee.tasks = [updated._id];
-      }
 
-      //Update
-      targetAssignee.save();
-      // await User.findByIdAndUpdate(
-      //   targetAssignee._id.toString(),
-      //   targetAssignee
-      // );
+        //mongoose query
+        updated = await Task.findByIdAndUpdate(taskId, updatedTask, {
+          new: true,
+        });
+        targetAssignee.save();
+      } else {
+        updated = await Task.findByIdAndUpdate(
+          taskId,
+          { $unset: { assignee: 1 } },
+          { new: true }
+        );
+      }
     }
 
     //send response
@@ -383,23 +393,24 @@ taskController.softDeleteTask = async (req, res, next) => {
     //if there is assignee, delete task in user collection
     if (targetTask.assignee) {
       const targetAssignee = await User.findById(targetTask.assignee);
-      if (targetAssignee.tasks) {
-        if (targetAssignee.tasks.includes(targetTask._id)) {
-          const index = targetAssignee.tasks.indexOf(targetTask._id);
-          targetAssignee.tasks.splice(index, 1);
+      if (targetAssignee) {
+        if (targetAssignee.tasks) {
+          if (targetAssignee.tasks.includes(targetTask._id)) {
+            const index = targetAssignee.tasks.indexOf(targetTask._id);
+            targetAssignee.tasks.splice(index, 1);
+          }
+        }
+
+        if (targetAssignee.tasks.length < 1) {
+          await User.findByIdAndUpdate(targetTask.assignee, {
+            $unset: { tasks: 1 },
+          });
+        } else {
+          targetAssignee.save();
         }
       }
-
-      if (targetAssignee.tasks.length < 1) {
-        await User.findByIdAndUpdate(targetTask.assignee, {
-          $unset: { tasks: 1 },
-        });
-      } else {
-        targetAssignee.save();
-      }
-
-      // targetAssignee.save();
     }
+
     //mongoose query
     const updated = await Task.findByIdAndUpdate(
       taskId,
@@ -438,21 +449,22 @@ taskController.hardDeleteTask = async (req, res, next) => {
     //if there is assignee, delete task in user collection
     if (targetTask.assignee) {
       const targetAssignee = await User.findById(targetTask.assignee);
-      if (targetAssignee.tasks) {
-        if (targetAssignee.tasks.includes(targetTask._id)) {
-          const index = targetAssignee.tasks.indexOf(targetTask._id);
-          targetAssignee.tasks.splice(index, 1);
+      if (targetAssignee) {
+        if (targetAssignee.tasks) {
+          if (targetAssignee.tasks.includes(targetTask._id)) {
+            const index = targetAssignee.tasks.indexOf(targetTask._id);
+            targetAssignee.tasks.splice(index, 1);
+          }
+        }
+
+        if (targetAssignee.tasks.length < 1) {
+          await User.findByIdAndUpdate(targetTask.assignee, {
+            $unset: { tasks: 1 },
+          });
+        } else {
+          targetAssignee.save();
         }
       }
-
-      if (targetAssignee.tasks.length < 1) {
-        await User.findByIdAndUpdate(targetTask.assignee, {
-          $unset: { tasks: 1 },
-        });
-      } else {
-        targetAssignee.save();
-      }
-      // targetAssignee.save();
     }
 
     //mongoose query
@@ -490,22 +502,22 @@ taskController.deleteTaskAssignee = async (req, res, next) => {
     //if there is assignee, delete task in user collection
     if (targetTask.assignee) {
       const targetAssignee = await User.findById(targetTask.assignee);
-      if (targetAssignee.tasks) {
-        if (targetAssignee.tasks.includes(targetTask._id)) {
-          const index = targetAssignee.tasks.indexOf(targetTask._id);
-          targetAssignee.tasks.splice(index, 1);
+      if (targetAssignee) {
+        if (targetAssignee.tasks) {
+          if (targetAssignee.tasks.includes(targetTask._id)) {
+            const index = targetAssignee.tasks.indexOf(targetTask._id);
+            targetAssignee.tasks.splice(index, 1);
+          }
+        }
+
+        if (targetAssignee.tasks.length < 1) {
+          await User.findByIdAndUpdate(targetTask.assignee, {
+            $unset: { tasks: 1 },
+          });
+        } else {
+          targetAssignee.save();
         }
       }
-
-      if (targetAssignee.tasks.length < 1) {
-        await User.findByIdAndUpdate(targetTask.assignee, {
-          $unset: { tasks: 1 },
-        });
-      } else {
-        targetAssignee.save();
-      }
-
-      // targetAssignee.save();
     }
 
     //mongoose query
