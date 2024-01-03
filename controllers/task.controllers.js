@@ -334,12 +334,12 @@ taskController.updateTask = async (req, res, next) => {
         //check if user already has tasks in User document
         //if yes, check no duplicate => add
         if (targetAssignee.tasks) {
-          if (!targetAssignee.tasks.includes(updated._id)) {
-            targetAssignee.tasks.push(updated._id);
+          if (!targetAssignee.tasks.includes(taskId)) {
+            targetAssignee.tasks.push(taskId);
           }
         } else {
           //if not, create
-          targetAssignee.tasks = [updated._id];
+          targetAssignee.tasks = [taskId];
         }
 
         //mongoose query
